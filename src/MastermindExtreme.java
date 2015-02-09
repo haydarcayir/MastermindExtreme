@@ -1,6 +1,8 @@
 import java.util.Scanner;
 import java.util.Vector;
 
+import com.sun.org.apache.bcel.internal.generic.ALOAD;
+
 public class MastermindExtreme {
 
 	public static void main(String[] args) {
@@ -45,7 +47,7 @@ public class MastermindExtreme {
 		String ss = generateNumber(digitCount, allowRepeat);
 		Scanner input = new Scanner(System.in);
 		boolean found = false;
-
+		init(digitCount,allowRepeat);
 		
 		Vector<Shot> shots = new Vector<Shot>();
 
@@ -60,12 +62,11 @@ public class MastermindExtreme {
 				i--;
 				continue;
 			}
+			//I check to enter character instead of numbers
 			for (int j = 0; j < digitCount; j++) {
 				if (x.charAt(j) >= '0' != x.charAt(j) <= '9') {
 					System.out.println("Wrong input !");
-
 				}
-
 			}
 
 			Shot shot = compare(x, ss);
@@ -82,11 +83,13 @@ public class MastermindExtreme {
 				shots.add(shot);
 
 				System.out.println("Computer thinking..");
+				removeFromCombinatins(x);
 				try {
 					Thread.sleep(500);
 				} catch (Exception e) {
 
 				}
+				//Computer creat own guess.
 				String guess = guessWithAI(digitCount, shots);
 				System.out.println("Computer's guess:" + guess);
 				Shot guessResult = compare(guess, ss);
@@ -95,6 +98,7 @@ public class MastermindExtreme {
 					found = true;
 					break;
 				} else {
+					removeFromCombinatins(guess);
 					shots.add(guessResult);
 					System.out.println("Computer's result:" + guessResult.getResultString());
 				}
@@ -109,23 +113,80 @@ public class MastermindExtreme {
  }
 
 
-	public static String guessWithAI(int digitCount, Vector<Shot> previousShots) {
-
-		String emptyStr = "";
-		for (int i = 0; i < digitCount; i++) {
-			int randomDigit = (int) (Math.random() * 10);
-			if (randomDigit == 0 && i == 0) {
-				i--;
-				continue;
-
+	private static Vector<Shot> outcomes;
+	private static Vector<Shot> combinations;
+	private static void init(int digitcount,boolean allowRepeat){
+		outcomes = new Vector<>();
+		combinations = new Vector<>();
+		
+		for(int i=0;i<digitcount;i++){
+			for(int j=0;j<(digitcount-i);j++){
+				Shot s = new Shot();
+				s.minus = j;
+				s.plus = i;
+				outcomes.add(s);
 			}
-
-			emptyStr += randomDigit;
 		}
-
-		return emptyStr;
+		for(int i=1;i<=9;i++){
+			for(int j=0;j<=9;j++){
+				if(!allowRepeat && i==j)
+					continue;
+				for(int k=0;k<=9;k++){
+					if(!allowRepeat && (k==j || k==i) )
+						continue;
+					for(int l=0;l<=9;l++){
+						if(!allowRepeat && (l==k || l==j || l == i))
+							continue;
+						Shot s = new Shot();
+						s.shot = ""+i+""+j+""+k+""+l;
+						combinations.add(s);
+					}
+				}
+			}
+		}
+	}
+	public static String guessWithAI(int digitCount, Vector<Shot> previousShots) {
+		
+		
+		
+		
+		int min = Integer.MAX_VALUE;
+		Shot minCombination = null;
+		for (Shot guess : combinations)
+		{
+		    int max = 0;
+		    for (Shot outcome : outcomes)
+		    {
+		        int count = 0;
+		        for (Shot solution : combinations)
+		        {
+		            if ( compare(guess, solution).isEqualResults(outcome) )
+		                count++;
+		        }
+		        if (count > max)
+		            max = count;
+		    }
+		    if (max < min)
+		    {
+		        min = max;
+		        minCombination = guess;
+		    }
+		}
+		return minCombination.shot;
 	}
 
+	public static Shot compare(Shot num1, Shot num2) {
+		return compare(num1.shot, num2.shot);
+	}
+	public static void removeFromCombinatins(String num1) {
+		for (int i = 0; i < combinations.size(); i++) {
+			if (combinations.get(i).shot.equals(num1)){
+				combinations.remove(i);
+				return;
+			}
+		}
+	}
+	//Our guess num1 and computer's guess num2 compare each other.
 	public static Shot compare(String num1, String num2) {
 		Shot s = new Shot();
 		s.shot = num1;
@@ -154,7 +215,7 @@ public class MastermindExtreme {
 
 		return s;
 	}
-
+//generateNumber store rondom numbers by computer.
 	public static String generateNumber(int digit, boolean allowrepeat) {
 		String str = "";
 
@@ -191,6 +252,9 @@ public class MastermindExtreme {
 				countPlusMinus += "-";
 			}
 			return countPlusMinus;
+		}
+		boolean isEqualResults(Shot s){
+			return s.plus == plus && s.minus == minus;
 		}
 	}
 
